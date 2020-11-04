@@ -1,0 +1,106 @@
+#include "mbed.h"
+#include <string>
+#include "Adafruit_SSD1306.h"
+
+// config SPI
+class SPIPreInit : public SPI
+{
+public:
+    SPIPreInit(PinName mosi, PinName miso, PinName clk) : SPI(mosi,miso,clk)
+    {
+        format(8,3);
+        frequency(2000000);
+    };
+};
+
+SPIPreInit gSpi(p11,NC,p13);
+Adafruit_SSD1306_Spi gOled1(gSpi,p26,p25,p24);
+ 
+
+
+// set up the HM10 Serial connection
+Serial hm10(p9,p10); //TX, RX
+Serial pc(USBTX, USBRX);
+
+//Led
+DigitalOut myled(p8);
+
+void gerarMenu(void);
+void selecionarOption(char);
+
+int main()
+{
+    //char buf[100];
+    //int counter = 0;
+    
+    myled = 0;
+    hm10.baud(9600); //make sure the baud rate is 9600
+    
+    while (!hm10.writeable()) { } //wait until the HM10 is ready
+    while(1) {
+        
+        if (hm10.readable())
+        {  
+            char texto = hm10.getc();
+            
+            selecionarOption(texto);
+        }
+        if (pc.readable())
+        {  
+            hm10.putc(pc.getc());        
+        }
+    }
+}
+
+void gerarMenu(){
+        hm10.printf("o_o Menu o_o\n");
+        hm10.printf("1- CARNE 15:00\n");
+        hm10.printf("2- FRANGO 15:00\n");
+        hm10.printf("3- PAOZINHO DE ALHO 15:00\n");
+        hm10.printf("4- LINGUICINHA 15:00\n");
+        hm10.printf("Digite sua option ou 0 para receber novamente.\n");  
+}
+
+void selecionarOption(char option){
+    string alimento;
+    int timer;
+    switch (option){
+    case '1':   alimento = "Carne";
+                timer = 15;
+                break;
+    case '2':   alimento = "Frango";
+                timer = 1;
+                break;
+    case '3':   alimento = "Paozinho de Alho";
+                timer = 1*60*1;
+                break;
+    case '4':   alimento = "Linguicinha";
+                timer = 1*60*15;
+                break;
+    case '0':   gerarMenu();
+                break;
+                
+    }
+    
+    
+    if(option =='1'||option=='2'||option=='3'||option=='4'){      
+        hm10.printf("Voce escolheu a option: %s.Vai Demorar %i segundos\n", alimento, timer);
+            myled=1;
+        while(1){
+            gOled1.clearDisplay();
+            gOled1.setTextCursor(0,0);
+              
+            gOled1.printf("%s \n %02i:%02i",alimento,timer/60,timer%60);
+            gOled1.display();
+            timer--;
+            if(timer<0) break;
+            wait(1);
+        
+        }
+        gOled1.clearDisplay();
+        gOled1.setTextCursor(0,0);
+        gOled1.printf("Seu churrasquinho ta feito!");
+        gOled1.display();
+        myled=0; 
+    }
+}
